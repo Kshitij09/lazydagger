@@ -6,7 +6,6 @@
  * Detailed information about configuring a multi-project build in Gradle can be found
  * in the user manual at https://docs.gradle.org/7.5/userguide/multi_project_builds.html
  */
-
 pluginManagement {
     repositories {
         mavenCentral()
@@ -24,6 +23,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "lazy-dagger"
-include("runtime")
-
 enableFeaturePreview("VERSION_CATALOGS")
+include("runtime")
+include(":codegen")
