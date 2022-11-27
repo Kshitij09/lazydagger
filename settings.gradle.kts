@@ -26,3 +26,4 @@ rootProject.name = "lazy-dagger"
 enableFeaturePreview("VERSION_CATALOGS")
 include("runtime")
 include(":codegen")
+include(":sample")
