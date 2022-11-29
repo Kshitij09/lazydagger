@@ -31,18 +31,37 @@ class LazyDaggerProcessor(
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.packageName.asString()
             typeParamResolver = classDeclaration.typeParameters.toTypeParameterResolver()
-            val className = classDeclaration.simpleName.asString() + "Impl"
+            val interfaceName = classDeclaration.simpleName.asString()
+            val className = "${interfaceName}Impl"
             classDeclaration.getAllProperties().forEach { it.accept(this, Unit) }
             val constructor = FunSpec.constructorBuilder()
                 .addParameters(constructorParams)
+                .addAnnotation(ClassName("javax.inject", "Inject"))
                 .build()
             val classType = TypeSpec.classBuilder(className)
                 .addProperties(properties)
                 .addSuperinterface(classDeclaration.asType(emptyList()).toTypeName())
                 .primaryConstructor(constructor)
                 .build()
+
+            val bindingFunction = FunSpec.builder("bind${interfaceName}")
+                .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
+                .addParameter("impl", ClassName(packageName, className))
+                .addAnnotation(ClassName("dagger", "Binds"))
+                .returns(classDeclaration.asType(emptyList()).toTypeName())
+                .clearBody()
+                .build()
+
+            val moduleType = TypeSpec.classBuilder("AbstractDelegateModule")
+                .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
+                .addAnnotation(ClassName("dagger", "Module"))
+                .addAnnotation(installInSingletonAnnotation)
+                .addFunction(bindingFunction)
+                .build()
+
             val fileSpec = FileSpec.builder(packageName, className)
                 .addType(classType)
+                .addType(moduleType)
                 .build()
             fileSpec.writeTo(codeGenerator, aggregating = false)
         }
@@ -92,6 +111,11 @@ class LazyDaggerProcessor(
 
     companion object {
         private val daggerLazyType = ClassName("dagger", "Lazy")
+        private val hiltInstallInType = ClassName("dagger.hilt", "InstallIn")
+        private val installInSingletonAnnotation = AnnotationSpec
+            .builder(hiltInstallInType)
+            .addMember("dagger.hilt.components.SingletonComponent::class")
+            .build()
         private const val lazyPropertySuffix = "Lazy"
     }
 }

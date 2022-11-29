@@ -7,6 +7,10 @@ buildscript {
     }
 }
 
+plugins {
+    alias(libs.plugins.ksp) apply false
+}
+
 subprojects {
     repositories { mavenCentral() }
 }
