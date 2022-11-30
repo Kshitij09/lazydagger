@@ -14,22 +14,39 @@ class LazyDaggerProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger
 ) : SymbolProcessor {
-    private val properties = mutableListOf<PropertySpec>()
-    private val constructorParams = mutableListOf<ParameterSpec>()
+    private val bindFunctions = mutableListOf<FunSpec>()
     private lateinit var typeParamResolver: TypeParameterResolver
+    private lateinit var packageName: String
+    var invoked = false
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        if (invoked) return emptyList()
         val symbols = resolver.getSymbolsWithAnnotation(LazyDagger::class.qualifiedName!!)
         val unableToProcess = symbols.filterNot { it.validate() }
         symbols.filter { it is KSClassDeclaration && it.isInterface && it.validate() }
             .forEach { it.accept(Visitor(), Unit) }
+
+        val moduleTypeBuilder = TypeSpec.classBuilder("LazyDaggerModule")
+            .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
+            .addAnnotation(ClassName("dagger", "Module"))
+            .addAnnotation(installInSingletonAnnotation)
+
+        bindFunctions.forEach { moduleTypeBuilder.addFunction(it) }
+
+        val fileSpec = FileSpec.builder(packageName, "LazyDaggerModule")
+            .addType(moduleTypeBuilder.build())
+            .build()
+        fileSpec.writeTo(codeGenerator, aggregating = false)
+        invoked = true
         return unableToProcess.toList()
     }
 
     private val KSClassDeclaration.isInterface: Boolean get() = classKind == ClassKind.INTERFACE
 
     private inner class Visitor : KSVisitorVoid() {
+        private val properties = mutableListOf<PropertySpec>()
+        private val constructorParams = mutableListOf<ParameterSpec>()
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
-            val packageName = classDeclaration.packageName.asString()
+            packageName = classDeclaration.packageName.asString()
             typeParamResolver = classDeclaration.typeParameters.toTypeParameterResolver()
             val interfaceName = classDeclaration.simpleName.asString()
             val className = "${interfaceName}Impl"
@@ -52,17 +69,12 @@ class LazyDaggerProcessor(
                 .clearBody()
                 .build()
 
-            val moduleType = TypeSpec.classBuilder("AbstractDelegateModule")
-                .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
-                .addAnnotation(ClassName("dagger", "Module"))
-                .addAnnotation(installInSingletonAnnotation)
-                .addFunction(bindingFunction)
-                .build()
+            bindFunctions.add(bindingFunction)
 
             val fileSpec = FileSpec.builder(packageName, className)
                 .addType(classType)
-                .addType(moduleType)
                 .build()
+
             fileSpec.writeTo(codeGenerator, aggregating = false)
         }
 
