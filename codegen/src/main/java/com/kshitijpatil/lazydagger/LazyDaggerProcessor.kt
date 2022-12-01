@@ -51,7 +51,7 @@ class LazyDaggerProcessor(
         private val properties = mutableListOf<PropertySpec>()
         private val constructorParams = mutableListOf<ParameterSpec>()
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
-            packageName = classDeclaration.packageName.asString()
+            val packageName = classDeclaration.packageName.asString()
             typeParamResolver = classDeclaration.typeParameters.toTypeParameterResolver()
             val classTypeName = classDeclaration.asType(emptyList()).toTypeName()
             val interfaceName = classDeclaration.simpleName.asString()
@@ -87,7 +87,11 @@ class LazyDaggerProcessor(
                 .addType(classType)
                 .build()
 
-            fileSpec.writeTo(codeGenerator, aggregating = false)
+            fileSpec.writeTo(
+                codeGenerator,
+                aggregating = false,
+                originatingKSFiles = listOf(classDeclaration.containingFile!!)
+            )
         }
 
         override fun visitPropertyDeclaration(property: KSPropertyDeclaration, data: Unit) {
