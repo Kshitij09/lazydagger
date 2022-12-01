@@ -19,7 +19,7 @@ class LazyDaggerProcessor(
     private lateinit var packageName: String
     var invoked = false
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        if (invoked) return emptyList()
+        //if (invoked) return emptyList()
         val symbols = resolver.getSymbolsWithAnnotation(LazyDagger::class.qualifiedName!!)
         val unableToProcess = symbols.filterNot { it.validate() }.toList()
 
@@ -30,7 +30,7 @@ class LazyDaggerProcessor(
         if (!targetSymbols.any()) return unableToProcess
 
         targetSymbols.forEach { it.accept(Visitor(), Unit) }
-        val moduleTypeBuilder = TypeSpec.classBuilder("LazyDaggerModule")
+        /*val moduleTypeBuilder = TypeSpec.classBuilder("LazyDaggerModule")
             .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
             .addAnnotation(ClassName("dagger", "Module"))
             .addAnnotation(installInSingletonAnnotation)
@@ -40,8 +40,8 @@ class LazyDaggerProcessor(
         val fileSpec = FileSpec.builder(packageName, "LazyDaggerModule")
             .addType(moduleTypeBuilder.build())
             .build()
-        fileSpec.writeTo(codeGenerator, aggregating = false)
-        invoked = true
+        fileSpec.writeTo(codeGenerator, aggregating = false)*/
+        //invoked = true
         return unableToProcess
     }
 
