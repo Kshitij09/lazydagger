@@ -48,6 +48,7 @@ class LazyDaggerProcessor(
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             packageName = classDeclaration.packageName.asString()
             typeParamResolver = classDeclaration.typeParameters.toTypeParameterResolver()
+            val classTypeName = classDeclaration.asType(emptyList()).toTypeName()
             val interfaceName = classDeclaration.simpleName.asString()
             val className = "${interfaceName}Impl"
             classDeclaration.getAllProperties().forEach { it.accept(this, Unit) }
@@ -55,9 +56,15 @@ class LazyDaggerProcessor(
                 .addParameters(constructorParams)
                 .addAnnotation(ClassName("javax.inject", "Inject"))
                 .build()
+
+            val originatingElementClass = ClassName("dagger.hilt.codegen", "OriginatingElement")
+            val foo = AnnotationSpec.builder(originatingElementClass)
+                .addMember("topLevelClass = %T::class", classTypeName)
+                .build()
             val classType = TypeSpec.classBuilder(className)
                 .addProperties(properties)
-                .addSuperinterface(classDeclaration.asType(emptyList()).toTypeName())
+                .addAnnotation(foo)
+                .addSuperinterface(classTypeName)
                 .primaryConstructor(constructor)
                 .build()
 
