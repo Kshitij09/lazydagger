@@ -21,10 +21,15 @@ class LazyDaggerProcessor(
     override fun process(resolver: Resolver): List<KSAnnotated> {
         if (invoked) return emptyList()
         val symbols = resolver.getSymbolsWithAnnotation(LazyDagger::class.qualifiedName!!)
-        val unableToProcess = symbols.filterNot { it.validate() }
-        symbols.filter { it is KSClassDeclaration && it.isInterface && it.validate() }
-            .forEach { it.accept(Visitor(), Unit) }
+        val unableToProcess = symbols.filterNot { it.validate() }.toList()
 
+        val targetSymbols = symbols.filter {
+            it is KSClassDeclaration && it.isInterface && it.validate()
+        }
+
+        if (!targetSymbols.any()) return unableToProcess
+
+        targetSymbols.forEach { it.accept(Visitor(), Unit) }
         val moduleTypeBuilder = TypeSpec.classBuilder("LazyDaggerModule")
             .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
             .addAnnotation(ClassName("dagger", "Module"))
@@ -37,7 +42,7 @@ class LazyDaggerProcessor(
             .build()
         fileSpec.writeTo(codeGenerator, aggregating = false)
         invoked = true
-        return unableToProcess.toList()
+        return unableToProcess
     }
 
     private val KSClassDeclaration.isInterface: Boolean get() = classKind == ClassKind.INTERFACE
