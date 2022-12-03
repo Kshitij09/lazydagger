@@ -14,12 +14,8 @@ class LazyDaggerProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger
 ) : SymbolProcessor {
-    private val bindFunctions = mutableListOf<FunSpec>()
-    private lateinit var typeParamResolver: TypeParameterResolver
-    private lateinit var packageName: String
-    var invoked = false
+
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        //if (invoked) return emptyList()
         val symbols = resolver.getSymbolsWithAnnotation(LazyDagger::class.qualifiedName!!)
         val unableToProcess = symbols.filterNot { it.validate() }.toList()
 
@@ -29,27 +25,18 @@ class LazyDaggerProcessor(
 
         if (!targetSymbols.any()) return unableToProcess
 
-        targetSymbols.forEach { it.accept(Visitor(), Unit) }
-        /*val moduleTypeBuilder = TypeSpec.classBuilder("LazyDaggerModule")
-            .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
-            .addAnnotation(ClassName("dagger", "Module"))
-            .addAnnotation(installInSingletonAnnotation)
-
-        bindFunctions.forEach { moduleTypeBuilder.addFunction(it) }
-
-        val fileSpec = FileSpec.builder(packageName, "LazyDaggerModule")
-            .addType(moduleTypeBuilder.build())
-            .build()
-        fileSpec.writeTo(codeGenerator, aggregating = false)*/
-        //invoked = true
+        val moduleFileSpecBuilder = LazyModuleFileSpecBuilder()
+        targetSymbols.forEach { it.accept(Visitor(moduleFileSpecBuilder), Unit) }
+        moduleFileSpecBuilder.build().writeTo(codeGenerator, aggregating = false)
         return unableToProcess
     }
 
     private val KSClassDeclaration.isInterface: Boolean get() = classKind == ClassKind.INTERFACE
 
-    private inner class Visitor : KSVisitorVoid() {
+    private inner class Visitor(private val bindingContributor: BindingContributor) : KSVisitorVoid() {
         private val properties = mutableListOf<PropertySpec>()
         private val constructorParams = mutableListOf<ParameterSpec>()
+        private lateinit var typeParamResolver: TypeParameterResolver
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.packageName.asString()
             typeParamResolver = classDeclaration.typeParameters.toTypeParameterResolver()
@@ -73,15 +60,7 @@ class LazyDaggerProcessor(
                 .primaryConstructor(constructor)
                 .build()
 
-            val bindingFunction = FunSpec.builder("bind${interfaceName}")
-                .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
-                .addParameter("impl", ClassName(packageName, className))
-                .addAnnotation(ClassName("dagger", "Binds"))
-                .returns(classDeclaration.asType(emptyList()).toTypeName())
-                .clearBody()
-                .build()
-
-            bindFunctions.add(bindingFunction)
+            bindingContributor.addBinding(ClassName(packageName, className), classDeclaration)
 
             val fileSpec = FileSpec.builder(packageName, className)
                 .addType(classType)

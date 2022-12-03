@@ -12,6 +12,7 @@ ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", versi
 dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
 hilt-core = { module = "com.google.dagger:hilt-core", version.ref = "dagger" }
+commons-lang3 = "org.apache.commons:commons-lang3:3.12.0"
 
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
