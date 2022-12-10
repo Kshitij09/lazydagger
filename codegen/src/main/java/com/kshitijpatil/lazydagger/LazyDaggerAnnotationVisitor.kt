@@ -15,11 +15,6 @@ internal class LazyDaggerAnnotationVisitor(
     private lateinit var typeParamResolver: TypeParameterResolver
     private var installComponents: List<ClassName> = emptyList()
 
-    // TODO: Move to environment
-    private val lazyPropertySuffix = "Lazy"
-    private val implClassNameSuffix = "Impl"
-    private val installInArgumentName = "components"
-
     override fun visitValueArgument(valueArgument: KSValueArgument, data: Unit) {
         if (valueArgument.name?.asString() == installInArgumentName) {
             val arguments = valueArgument.value as? List<*> ?: return
@@ -111,5 +106,11 @@ internal class LazyDaggerAnnotationVisitor(
         properties += constructorProperty
         val classProperty = lazyClassProperty(propertyName, typeName, constructorProperty)
         properties += classProperty
+    }
+
+    companion object {
+        private const val lazyPropertySuffix = "Lazy"
+        private const val implClassNameSuffix = "Impl"
+        private const val installInArgumentName = "components"
     }
 }
