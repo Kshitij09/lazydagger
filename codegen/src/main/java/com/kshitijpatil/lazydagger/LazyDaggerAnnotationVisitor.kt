@@ -1,9 +1,7 @@
 package com.kshitijpatil.lazydagger
 
 import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSVisitorVoid
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.TypeParameterResolver
@@ -18,11 +16,30 @@ internal class LazyDaggerAnnotationVisitor(
     private val properties = mutableListOf<PropertySpec>()
     private val constructorParams = mutableListOf<ParameterSpec>()
     private lateinit var typeParamResolver: TypeParameterResolver
+    private var installComponents: List<TypeName>? = null
 
     // TODO: Move to environment
     private val lazyPropertySuffix = "Lazy"
     private val implClassNameSuffix = "Impl"
+    private val installInArgumentName = "components"
+
+    override fun visitValueArgument(valueArgument: KSValueArgument, data: Unit) {
+        if (valueArgument.name?.asString() == installInArgumentName) {
+            val arguments = valueArgument.value as? List<*> ?: return
+            installComponents = arguments
+                .mapNotNull { it as? KSType }
+                .map { it.toTypeName() }
+        }
+    }
+
+    override fun visitAnnotation(annotation: KSAnnotation, data: Unit) {
+        if (annotation.shortName.asString() == LazyDagger::class.simpleName) {
+            annotation.arguments.forEach { it.accept(this, Unit) }
+        }
+    }
+
     override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
+        classDeclaration.annotations.forEach { it.accept(this, Unit) }
         val packageName = classDeclaration.packageName.asString()
         typeParamResolver = classDeclaration.typeParameters.toTypeParameterResolver()
         val classTypeName = classDeclaration.asType(emptyList()).toTypeName()
