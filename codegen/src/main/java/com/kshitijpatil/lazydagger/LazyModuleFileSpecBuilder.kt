@@ -1,35 +1,51 @@
 package com.kshitijpatil.lazydagger
 
+import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.*
 import org.apache.commons.lang3.StringUtils
 
-internal class LazyModuleFileSpecBuilder : BindingContributor {
-    private val bindingFunctions = mutableListOf<FunSpec>()
-    private val packageNames = mutableListOf<String>()
-    private val installInSingletonAnnotation = AnnotationSpec
-        .builder(PoetClasses.hiltInstallIn)
-        .addMember("dagger.hilt.components.SingletonComponent::class")
-        .build()
+internal class LazyModuleFileSpecBuilder(private val logger: KSPLogger) : BindingContributor {
     var className = "LazyDaggerModule"
     var implParamName = "impl"
     var bindFunctionPrefix = "bind"
+    private val bindingMap = mutableMapOf<ClassName, MutableList<LazyBinding>>(
+        PoetClasses.singletonComponent to mutableListOf()
+    )
+
     override fun addBinding(binding: LazyBinding) {
-        val functionSpec = funSpecOf(binding)
-        bindingFunctions.add(functionSpec)
-        packageNames.add(binding.packageName)
+        binding.components.ifEmpty { listOf(PoetClasses.singletonComponent) }
+            .also { logger.logging("LazyDagger: Adding $it") }
+            .forEach { component ->
+                bindingMap.compute(component) { _, list ->
+                    (list ?: mutableListOf()).also {
+                        it.add(binding)
+                    }
+                }
+            }
     }
 
-    fun build(): FileSpec {
-        val module = TypeSpec.classBuilder(className)
+    private fun buildModuleFile(component: ClassName, bindings: List<LazyBinding>): FileSpec {
+        val bindingFunctions = bindings.map { funSpecOf(it) }
+        val packageNames = bindings.map { it.packageName }
+        val moduleName = "${component.simpleName}_$className"
+        val module = TypeSpec.classBuilder(moduleName)
             .addModifiers(KModifier.INTERNAL, KModifier.ABSTRACT)
             .addAnnotation(PoetClasses.daggerModule)
-            .addAnnotation(installInSingletonAnnotation)
+            .addAnnotation(
+                AnnotationSpec.builder(PoetClasses.hiltInstallIn)
+                    .addMember("${component.canonicalName}::class")
+                    .build()
+            )
             .addFunctions(bindingFunctions)
             .build()
         val packageName = StringUtils.getCommonPrefix(*packageNames.toTypedArray())
-        return FileSpec.builder(packageName, className)
+        return FileSpec.builder(packageName, moduleName)
             .addType(module)
             .build()
+    }
+
+    fun build(): List<FileSpec> {
+        return bindingMap.map { (component, bindings) -> buildModuleFile(component, bindings) }
     }
 
     private fun funSpecOf(binding: LazyBinding): FunSpec {

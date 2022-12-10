@@ -4,10 +4,7 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.TypeParameterResolver
-import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
-import com.squareup.kotlinpoet.ksp.writeTo
+import com.squareup.kotlinpoet.ksp.*
 
 internal class LazyDaggerAnnotationVisitor(
     private val codeGenerator: CodeGenerator,
@@ -16,7 +13,7 @@ internal class LazyDaggerAnnotationVisitor(
     private val properties = mutableListOf<PropertySpec>()
     private val constructorParams = mutableListOf<ParameterSpec>()
     private lateinit var typeParamResolver: TypeParameterResolver
-    private var installComponents: List<TypeName>? = null
+    private var installComponents: List<ClassName> = emptyList()
 
     // TODO: Move to environment
     private val lazyPropertySuffix = "Lazy"
@@ -28,7 +25,7 @@ internal class LazyDaggerAnnotationVisitor(
             val arguments = valueArgument.value as? List<*> ?: return
             installComponents = arguments
                 .mapNotNull { it as? KSType }
-                .map { it.toTypeName() }
+                .map { it.toClassName() }
         }
     }
 
@@ -61,7 +58,7 @@ internal class LazyDaggerAnnotationVisitor(
             .primaryConstructor(constructor)
             .build()
 
-        bindingContributor.addBinding(LazyBinding(packageName, interfaceName, className))
+        bindingContributor.addBinding(LazyBinding(packageName, interfaceName, className, installComponents))
 
         val fileSpec = FileSpec.builder(packageName, className)
             .addType(classType)

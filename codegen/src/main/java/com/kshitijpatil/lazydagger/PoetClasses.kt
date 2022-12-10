@@ -20,4 +20,7 @@ internal object PoetClasses {
 
     @JvmField
     val hiltOriginatingElement = ClassName("dagger.hilt.codegen", "OriginatingElement")
+
+    @JvmField
+    val singletonComponent = ClassName("dagger.hilt.components", "SingletonComponent")
 }

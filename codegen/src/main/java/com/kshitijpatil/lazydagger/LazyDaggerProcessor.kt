@@ -22,14 +22,14 @@ class LazyDaggerProcessor(
 
         if (!targetSymbols.any()) return unableToProcess
 
-        val moduleFileSpecBuilder = LazyModuleFileSpecBuilder()
+        val moduleFileSpecBuilder = LazyModuleFileSpecBuilder(logger)
         targetSymbols.forEach {
             it.accept(
                 visitor = LazyDaggerAnnotationVisitor(codeGenerator, moduleFileSpecBuilder),
                 data = Unit
             )
         }
-        moduleFileSpecBuilder.build().writeTo(codeGenerator, aggregating = false)
+        moduleFileSpecBuilder.build().forEach { it.writeTo(codeGenerator, aggregating = false) }
         return unableToProcess
     }
 
