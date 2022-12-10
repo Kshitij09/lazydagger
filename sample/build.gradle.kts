@@ -9,9 +9,9 @@ sourceSets.main {
 }
 
 dependencies {
-    implementation(project(":runtime"))
+    implementation("com.kshitijpatil.lazydagger:lazydagger-core:0.0.1")
     implementation(libs.dagger)
     implementation(libs.hilt.core)
     kapt(libs.dagger.compiler)
-    ksp(project(":codegen"))
+    ksp("com.kshitijpatil.lazydagger:lazydagger-codegen:0.0.1")
 }
