@@ -61,7 +61,7 @@ internal class LazyDaggerAnnotationVisitor(
             .primaryConstructor(constructor)
             .build()
 
-        bindingContributor.addBinding(ClassName(packageName, className), classDeclaration)
+        bindingContributor.addBinding(LazyBinding(packageName, interfaceName, className))
 
         val fileSpec = FileSpec.builder(packageName, className)
             .addType(classType)
